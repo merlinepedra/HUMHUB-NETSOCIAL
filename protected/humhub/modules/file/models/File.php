@@ -8,6 +8,7 @@
 
 namespace humhub\modules\file\models;
 
+use humhub\modules\files\interfaces\AttachedFileVersioningSupport;
 use humhub\modules\user\models\User;
 use yii\db\ActiveRecord;
 use Yii;
@@ -174,7 +175,6 @@ class File extends FileCompat
      *
      * If the file is not an instance of HActiveRecordContent or HActiveRecordContentAddon
      * the file is readable for all.
-
      * @param string|User $userId
      * @return bool
      */
@@ -267,4 +267,48 @@ class File extends FileCompat
         return self::findAll(['object_model' => $record->className(), 'object_id' => $record->getPrimaryKey()]);
     }
 
+
+    /**
+     * If the file content has changed, the new file must be set via this method.
+     * @param File $newFile
+     *
+     * @throws \Throwable
+     * @throws \yii\db\StaleObjectException
+     * @since 1.10
+     */
+    public function replace(File $newFile)
+    {
+        /** @var ActiveRecord $fileOwner */
+        $fileOwner = $this->getPolymorphicRelation();
+
+        $newFile->object_id = $this->object_id;
+        $newFile->object_model = $this->object_model;
+        $newFile->show_in_stream = $this->show_in_stream;
+        $newFile->save();
+
+        if ($fileOwner instanceof AttachedFileVersioningSupport) {
+            // For Content with Versioning Support e.g. CFiles
+            $this->object_id = $newFile->id;
+            $this->object_model = get_class($newFile);
+            $this->save();
+        } else {
+            // Content without Versioning Support e.g. for Posts
+            $this->delete();
+        }
+    }
+
+    /**
+     * Returns a query for all older File versions
+     *
+     * @since 1.10
+     * @return \yii\db\ActiveQuery
+     */
+    public function getFileVersionsQuery()
+    {
+        return static::find()
+            ->andWhere([
+                'object_model' => static::class,
+                'object_id' => $this->id
+            ])->orderBy(['id' => SORT_DESC]);
+    }
 }
