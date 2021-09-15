@@ -281,7 +281,7 @@ class File extends FileCompat
      * @throws \yii\db\StaleObjectException
      * @since 1.10
      */
-    public function replace(File $newFile)
+    public function replaceWithFile(File $newFile)
     {
         /** @var ActiveRecord $fileOwner */
         $fileOwner = $this->getPolymorphicRelation();
