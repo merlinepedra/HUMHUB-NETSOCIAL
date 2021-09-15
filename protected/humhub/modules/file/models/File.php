@@ -106,6 +106,11 @@ class File extends FileCompat
     public function beforeDelete()
     {
         $this->store->delete();
+
+        foreach ($this->getFileVersionsQuery()->all() as $f) {
+            $f->delete();
+        }
+
         return parent::beforeDelete();
     }
 
