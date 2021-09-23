@@ -292,10 +292,22 @@ class File extends FileCompat
         $newFile->save();
 
         if ($fileOwner instanceof AttachedFileVersioningSupport) {
-            // For Content with Versioning Support e.g. CFiles
-            $this->object_id = $newFile->id;
-            $this->object_model = get_class($newFile);
-            $this->save();
+            // Move existing versions and current file to NewFile
+            File::updateAll([
+                'object_model' => File::class,
+                'object_id' => $newFile->id,
+            ], [
+                'or',
+                [   'and',
+                    ['object_model' => $newFile->object_model],
+                    ['object_id' => $newFile->object_id],
+                    ['!=', 'id', $newFile->id],
+                ],
+                [   'and',
+                    ['object_model' => File::class],
+                    ['object_id' => $this->id],
+                ]
+            ]);
         } else {
             // Content without Versioning Support e.g. for Posts
             $this->delete();
